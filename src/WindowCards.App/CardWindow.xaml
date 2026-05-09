@@ -1,0 +1,49 @@
+<Window x:Class="WindowCards.App.CardWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        ShowInTaskbar="False"
+        Topmost="False"
+        ResizeMode="CanResizeWithGrip"
+        Focusable="False"
+        ShowActivated="False"
+        Width="220"
+        Height="36"
+        MinWidth="60"
+        MinHeight="20"
+        SizeToContent="Manual">
+    <Border x:Name="CardBorder"
+            Background="#D32F2F"
+            CornerRadius="6"
+            Padding="8,2"
+            BorderBrush="#7A0000"
+            BorderThickness="1"
+            Cursor="SizeAll"
+            MouseLeftButtonDown="OnBorderMouseLeftDown"
+            MouseMove="OnBorderMouseMove"
+            MouseLeftButtonUp="OnBorderMouseLeftUp">
+        <Border.ContextMenu>
+            <ContextMenu>
+                <MenuItem Header="Editar texto..." Click="OnEditMenuClick"/>
+                <Separator/>
+                <MenuItem Header="Remover card" Click="OnRemoveMenuClick"/>
+                <Separator/>
+                <MenuItem Header="Sair do WindowCards" Click="OnExitMenuClick"/>
+            </ContextMenu>
+        </Border.ContextMenu>
+        <Border.Effect>
+            <DropShadowEffect Color="Black" BlurRadius="8" ShadowDepth="2" Opacity="0.45"/>
+        </Border.Effect>
+        <Viewbox Stretch="Uniform">
+            <TextBlock x:Name="CardText"
+                       Text="Card"
+                       Foreground="White"
+                       FontWeight="Bold"
+                       FontFamily="Segoe UI"
+                       TextOptions.TextRenderingMode="ClearType"
+                       TextOptions.TextFormattingMode="Ideal"/>
+        </Viewbox>
+    </Border>
+</Window>

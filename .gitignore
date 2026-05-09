@@ -1,0 +1,29 @@
+# Build outputs
+[Bb]in/
+[Oo]bj/
+[Pp]ublish/
+[Ll]og/
+[Ll]ogs/
+
+# Visual Studio
+.vs/
+*.user
+*.userosscache
+*.sln.docstates
+*.suo
+*.cache
+
+# .NET
+*.pdb
+TestResults/
+project.lock.json
+artifacts/
+
+# Rider
+.idea/
+*.DotSettings.user
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
