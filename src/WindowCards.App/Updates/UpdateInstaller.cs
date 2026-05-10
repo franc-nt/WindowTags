@@ -30,6 +30,66 @@ public static class UpdateInstaller
         }
     }
 
+    public static void LaunchUpdatedExe()
+    {
+        var exePath = GetCurrentExePath();
+        Process.Start(new ProcessStartInfo
+        {
+            FileName = exePath,
+            UseShellExecute = true
+        });
+    }
+
+    public static void WaitForUpdaterPredecessor(TimeSpan timeout)
+    {
+        try
+        {
+            var myExe = GetCurrentExePath();
+            var oldMarker = myExe + OldSuffix;
+            if (!File.Exists(oldMarker)) return;
+
+            var myPid = Environment.ProcessId;
+            var deadline = DateTime.UtcNow + timeout;
+
+            while (DateTime.UtcNow < deadline)
+            {
+                var others = Process.GetProcessesByName("WindowCards")
+                    .Where(p => p.Id != myPid && SameExePath(p, myExe))
+                    .ToArray();
+
+                try
+                {
+                    if (others.Length == 0) return;
+                    foreach (var p in others)
+                    {
+                        try { p.WaitForExit(500); } catch { }
+                    }
+                }
+                finally
+                {
+                    foreach (var p in others) p.Dispose();
+                }
+            }
+        }
+        catch
+        {
+            // best-effort
+        }
+    }
+
+    private static bool SameExePath(Process p, string myExe)
+    {
+        try
+        {
+            var path = p.MainModule?.FileName;
+            return path is not null && string.Equals(path, myExe, StringComparison.OrdinalIgnoreCase);
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
     public static async Task<InstallResult> InstallAsync(
         UpdateInfo info,
         IProgress<double>? progress,
@@ -77,12 +137,6 @@ public static class UpdateInstaller
                 try { File.Move(oldPath, exePath); } catch { }
                 throw;
             }
-
-            Process.Start(new ProcessStartInfo
-            {
-                FileName = exePath,
-                UseShellExecute = true
-            });
 
             return InstallResult.Ok();
         }

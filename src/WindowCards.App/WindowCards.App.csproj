@@ -15,7 +15,7 @@
     <AssemblyName>WindowCards</AssemblyName>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <NoWarn>$(NoWarn);WFO0003</NoWarn>
-    <Version>0.1.1</Version>
+    <Version>0.1.2</Version>
     <AssemblyTitle>WindowCards</AssemblyTitle>
     <Product>WindowCards</Product>
     <Company>franc-nt</Company>

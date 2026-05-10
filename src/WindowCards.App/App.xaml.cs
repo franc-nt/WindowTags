@@ -26,6 +26,7 @@ public partial class App : Application
 
         _settings = SettingsStore.Load();
         StartupRegistration.Sync(_settings.StartWithWindows);
+        UpdateInstaller.WaitForUpdaterPredecessor(TimeSpan.FromSeconds(5));
         UpdateInstaller.CleanupLeftoverOldExe();
 
         try
@@ -103,7 +104,22 @@ public partial class App : Application
                     if (owner is not null) dlg.Owner = owner;
                     if (dlg.ShowDialog() == true)
                     {
-                        await Task.Delay(300);
+                        // Libera hotkeys globais antes de iniciar o sucessor;
+                        // do contrário o novo processo recebe Win32 1409 ao registrar.
+                        _hotkeys?.Dispose();
+                        _hotkeys = null;
+                        try
+                        {
+                            UpdateInstaller.LaunchUpdatedExe();
+                        }
+                        catch (Exception ex)
+                        {
+                            ShowMessage(owner,
+                                $"A nova versão foi instalada, mas falhou ao iniciar:\n\n{ex.Message}\n\n" +
+                                "Abra manualmente o WindowCards.exe.",
+                                MessageBoxImage.Warning);
+                        }
+                        await Task.Delay(200);
                         Shutdown();
                     }
                     break;
