@@ -16,13 +16,14 @@ public sealed class WindowTracker : IDisposable
     public event Action? Minimized;
     public event Action? Restored;
     public event Action? Destroyed;
+    public event Action? TitleChanged;
 
     public WindowTracker(IntPtr targetHwnd)
     {
         if (targetHwnd == IntPtr.Zero) throw new ArgumentException("targetHwnd is null", nameof(targetHwnd));
         _targetHwnd = targetHwnd;
 
-        _hook = new WinEventHook(PInvoke.EVENT_OBJECT_DESTROY, PInvoke.EVENT_OBJECT_LOCATIONCHANGE);
+        _hook = new WinEventHook(PInvoke.EVENT_OBJECT_DESTROY, PInvoke.EVENT_OBJECT_NAMECHANGE);
         _hook.Event += OnWinEvent;
     }
 
@@ -50,6 +51,10 @@ public sealed class WindowTracker : IDisposable
             case PInvoke.EVENT_SYSTEM_MINIMIZEEND:
                 Restored?.Invoke();
                 BoundsChanged?.Invoke(WindowGeometry.GetExtendedFrameBounds(hwnd));
+                break;
+
+            case PInvoke.EVENT_OBJECT_NAMECHANGE:
+                TitleChanged?.Invoke();
                 break;
 
             case PInvoke.EVENT_OBJECT_DESTROY:

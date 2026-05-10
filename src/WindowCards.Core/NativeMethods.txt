@@ -1,6 +1,7 @@
 SetWinEventHook
 UnhookWinEvent
 EVENT_OBJECT_LOCATIONCHANGE
+EVENT_OBJECT_NAMECHANGE
 EVENT_OBJECT_DESTROY
 EVENT_OBJECT_HIDE
 EVENT_OBJECT_SHOW
@@ -20,6 +21,7 @@ GetWindowThreadProcessId
 GetClassName
 GetWindowText
 GetWindowTextLength
+SetWindowText
 IsWindow
 IsWindowVisible
 IsIconic

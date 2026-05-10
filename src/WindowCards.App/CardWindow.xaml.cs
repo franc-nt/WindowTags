@@ -13,6 +13,7 @@ public partial class CardWindow : Window
 {
     private readonly CardConfig _config;
     private readonly WindowTracker _tracker;
+    private readonly WindowTitlePrefixer _titlePrefixer;
     private IntPtr _hwnd;
 
     private bool _dragging;
@@ -34,6 +35,7 @@ public partial class CardWindow : Window
 
         _config = config;
         _tracker = new WindowTracker(targetHwnd);
+        _titlePrefixer = new WindowTitlePrefixer(targetHwnd, _tracker, _config.Text);
 
         Width = _config.Width;
         Height = _config.Height;
@@ -178,6 +180,7 @@ public partial class CardWindow : Window
 
     private void OnClosed(object? sender, EventArgs e)
     {
+        _titlePrefixer.Dispose();
         _tracker.Dispose();
     }
 
@@ -185,6 +188,7 @@ public partial class CardWindow : Window
     {
         _config.Text = text;
         CardText.Text = text;
+        _titlePrefixer.UpdatePrefix(text);
     }
 
     public void SetColors(string backgroundHex, string foregroundHex)
