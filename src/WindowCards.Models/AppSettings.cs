@@ -15,4 +15,6 @@ public sealed class AppSettings
         Alt = true,
         VirtualKey = 0x52 // VK_R
     };
+
+    public bool StartWithWindows { get; set; } = true;
 }

@@ -23,6 +23,7 @@ public partial class App : Application
         base.OnStartup(e);
 
         _settings = SettingsStore.Load();
+        StartupRegistration.Sync(_settings.StartWithWindows);
 
         try
         {
@@ -60,9 +61,16 @@ public partial class App : Application
             return;
         }
 
-        _infoWindow = new InfoWindow(_settings, TryChangeHotkey);
+        _infoWindow = new InfoWindow(_settings, TryChangeHotkey, SetStartWithWindows);
         _infoWindow.Closed += (_, _) => _infoWindow = null;
         _infoWindow.Show();
+    }
+
+    private void SetStartWithWindows(bool enabled)
+    {
+        _settings.StartWithWindows = enabled;
+        StartupRegistration.Sync(enabled);
+        SettingsStore.Save(_settings);
     }
 
     private bool TryChangeHotkey(HotkeySlot slot, HotkeyBinding newBinding, out string error)

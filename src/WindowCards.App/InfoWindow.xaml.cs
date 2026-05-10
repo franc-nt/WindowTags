@@ -16,19 +16,31 @@ public partial class InfoWindow : Window
 
     private readonly AppSettings _settings;
     private readonly TryChangeHotkey _changer;
+    private readonly Action<bool> _setStartWithWindows;
+    private bool _suppressStartupToggle;
 
-    public InfoWindow(AppSettings settings, TryChangeHotkey changer)
+    public InfoWindow(AppSettings settings, TryChangeHotkey changer, Action<bool> setStartWithWindows)
     {
         InitializeComponent();
         _settings = settings;
         _changer = changer;
+        _setStartWithWindows = setStartWithWindows;
         RefreshLabels();
+        _suppressStartupToggle = true;
+        StartWithWindowsCheckBox.IsChecked = _settings.StartWithWindows;
+        _suppressStartupToggle = false;
     }
 
     private void RefreshLabels()
     {
         CreateOrEditLabel.Text = HotkeyFormat.Display(_settings.CreateOrEdit);
         RemoveLabel.Text = HotkeyFormat.Display(_settings.Remove);
+    }
+
+    private void OnStartWithWindowsToggled(object sender, RoutedEventArgs e)
+    {
+        if (_suppressStartupToggle) return;
+        _setStartWithWindows(StartWithWindowsCheckBox.IsChecked == true);
     }
 
     private void OnChangeCreateOrEdit(object sender, RoutedEventArgs e)
