@@ -1,3 +1,4 @@
+using System.Reflection;
 using System.Windows;
 using WindowCards.App.Hotkeys;
 using WindowCards.Models;
@@ -17,19 +18,29 @@ public partial class InfoWindow : Window
     private readonly AppSettings _settings;
     private readonly TryChangeHotkey _changer;
     private readonly Action<bool> _setStartWithWindows;
+    private readonly Func<Task> _checkForUpdate;
     private bool _suppressStartupToggle;
 
-    public InfoWindow(AppSettings settings, TryChangeHotkey changer, Action<bool> setStartWithWindows)
+    public InfoWindow(
+        AppSettings settings,
+        TryChangeHotkey changer,
+        Action<bool> setStartWithWindows,
+        Func<Task> checkForUpdate)
     {
         InitializeComponent();
         _settings = settings;
         _changer = changer;
         _setStartWithWindows = setStartWithWindows;
+        _checkForUpdate = checkForUpdate;
+        VersionLabel.Text = $"v{GetAppVersion().ToString(3)}";
         RefreshLabels();
         _suppressStartupToggle = true;
         StartWithWindowsCheckBox.IsChecked = _settings.StartWithWindows;
         _suppressStartupToggle = false;
     }
+
+    private static Version GetAppVersion()
+        => Assembly.GetExecutingAssembly().GetName().Version ?? new Version(0, 0, 0);
 
     private void RefreshLabels()
     {
@@ -69,6 +80,9 @@ public partial class InfoWindow : Window
                 MessageBoxImage.Warning);
         }
     }
+
+    private async void OnCheckUpdateClick(object sender, RoutedEventArgs e)
+        => await _checkForUpdate();
 
     private void OnCloseClick(object sender, RoutedEventArgs e) => Close();
 }

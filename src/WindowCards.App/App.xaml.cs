@@ -2,6 +2,7 @@ using System.Windows;
 using WindowCards.App.Hotkeys;
 using WindowCards.App.Settings;
 using WindowCards.App.Tray;
+using WindowCards.App.Updates;
 using WindowCards.Core.Tracking;
 using WindowCards.Models;
 
@@ -17,6 +18,7 @@ public partial class App : Application
 
     private int _createOrEditId;
     private int _removeId;
+    private int _updateCheckInProgress;
 
     protected override void OnStartup(StartupEventArgs e)
     {
@@ -24,6 +26,7 @@ public partial class App : Application
 
         _settings = SettingsStore.Load();
         StartupRegistration.Sync(_settings.StartWithWindows);
+        UpdateInstaller.CleanupLeftoverOldExe();
 
         try
         {
@@ -48,6 +51,7 @@ public partial class App : Application
 
         _tray = new TrayIconHost();
         _tray.ShowInfoRequested += ShowInfoWindow;
+        _tray.CheckUpdateRequested += async () => await CheckForUpdateAsync();
         _tray.ExitRequested += () => Shutdown();
         _tray.ShowBalloon("WindowCards está rodando",
             $"Use {HotkeyFormat.Display(_settings.CreateOrEdit)} sobre qualquer janela para criar um card. Clique no ícone para ver os atalhos.");
@@ -61,9 +65,62 @@ public partial class App : Application
             return;
         }
 
-        _infoWindow = new InfoWindow(_settings, TryChangeHotkey, SetStartWithWindows);
+        _infoWindow = new InfoWindow(_settings, TryChangeHotkey, SetStartWithWindows, CheckForUpdateAsync);
         _infoWindow.Closed += (_, _) => _infoWindow = null;
         _infoWindow.Show();
+    }
+
+    private async Task CheckForUpdateAsync()
+    {
+        if (Interlocked.Exchange(ref _updateCheckInProgress, 1) == 1) return;
+        try
+        {
+            var result = await UpdateChecker.CheckAsync();
+            var owner = _infoWindow is { IsLoaded: true } ? (Window)_infoWindow : null;
+
+            switch (result.Outcome)
+            {
+                case UpdateCheckOutcome.UpToDate:
+                    ShowMessage(owner,
+                        $"Você já está na versão mais recente ({result.Info!.CurrentVersion.ToString(3)}).",
+                        MessageBoxImage.Information);
+                    break;
+
+                case UpdateCheckOutcome.NoReleaseFound:
+                    ShowMessage(owner,
+                        "Não foi possível encontrar uma release publicada no GitHub.",
+                        MessageBoxImage.Information);
+                    break;
+
+                case UpdateCheckOutcome.NetworkError:
+                    ShowMessage(owner,
+                        $"Falha ao consultar o GitHub:\n\n{result.ErrorMessage}",
+                        MessageBoxImage.Warning);
+                    break;
+
+                case UpdateCheckOutcome.NewerAvailable:
+                    var dlg = new UpdateAvailableDialog(result.Info!);
+                    if (owner is not null) dlg.Owner = owner;
+                    if (dlg.ShowDialog() == true)
+                    {
+                        await Task.Delay(300);
+                        Shutdown();
+                    }
+                    break;
+            }
+        }
+        finally
+        {
+            Interlocked.Exchange(ref _updateCheckInProgress, 0);
+        }
+    }
+
+    private static void ShowMessage(Window? owner, string text, MessageBoxImage icon)
+    {
+        if (owner is not null)
+            MessageBox.Show(owner, text, "WindowCards", MessageBoxButton.OK, icon);
+        else
+            MessageBox.Show(text, "WindowCards", MessageBoxButton.OK, icon);
     }
 
     private void SetStartWithWindows(bool enabled)

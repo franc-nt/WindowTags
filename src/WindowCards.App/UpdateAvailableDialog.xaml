@@ -1,0 +1,81 @@
+<Window x:Class="WindowCards.App.UpdateAvailableDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="WindowCards — Nova versão disponível"
+        Width="600" Height="500"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize"
+        ShowInTaskbar="False"
+        Topmost="True"
+        WindowStyle="ToolWindow"
+        Background="#FAFAFA">
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+            <Border Background="#D32F2F" CornerRadius="4" Padding="8,3" VerticalAlignment="Center">
+                <TextBlock Text="WC" Foreground="White" FontWeight="Bold" FontSize="14"/>
+            </Border>
+            <TextBlock Text="Nova versão disponível"
+                       FontSize="20"
+                       FontWeight="SemiBold"
+                       VerticalAlignment="Center"
+                       Margin="10,0,0,0"/>
+        </StackPanel>
+
+        <Grid Grid.Row="1" Margin="0,0,0,12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+            <TextBlock Text="Versão atual:" Foreground="#555" Margin="0,0,8,0"/>
+            <TextBlock x:Name="CurrentVersionLabel" Grid.Column="1" FontWeight="SemiBold"/>
+            <TextBlock Grid.Row="1" Text="Nova versão:" Foreground="#555" Margin="0,4,8,0"/>
+            <TextBlock x:Name="NewVersionLabel" Grid.Row="1" Grid.Column="1"
+                       FontWeight="SemiBold" Foreground="#D32F2F" Margin="0,4,0,0"/>
+        </Grid>
+
+        <GroupBox Grid.Row="2" Header="Notas da versão" Padding="0">
+            <TextBox x:Name="ChangelogText"
+                     IsReadOnly="True"
+                     TextWrapping="Wrap"
+                     AcceptsReturn="True"
+                     VerticalScrollBarVisibility="Auto"
+                     FontFamily="Segoe UI"
+                     BorderThickness="0"
+                     Background="Transparent"
+                     Padding="6"/>
+        </GroupBox>
+
+        <StackPanel Grid.Row="3" Margin="0,12,0,0" x:Name="ProgressPanel" Visibility="Collapsed">
+            <TextBlock x:Name="ProgressLabel" Text="Baixando..." Margin="0,0,0,4" Foreground="#555"/>
+            <ProgressBar x:Name="DownloadProgress" Height="6" Minimum="0" Maximum="1"/>
+        </StackPanel>
+
+        <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
+            <Button x:Name="CancelButton"
+                    Content="Cancelar"
+                    Width="100" Height="28"
+                    Margin="0,0,8,0"
+                    IsCancel="True"
+                    Click="OnCancelClick"/>
+            <Button x:Name="UpdateButton"
+                    Content="Atualizar"
+                    Width="100" Height="28"
+                    IsDefault="True"
+                    Click="OnUpdateClick"
+                    Background="#D32F2F"
+                    Foreground="White"/>
+        </StackPanel>
+    </Grid>
+</Window>

@@ -12,6 +12,7 @@ public sealed class TrayIconHost : IDisposable
     private bool _disposed;
 
     public event Action? ShowInfoRequested;
+    public event Action? CheckUpdateRequested;
     public event Action? ExitRequested;
 
     public TrayIconHost()
@@ -20,6 +21,7 @@ public sealed class TrayIconHost : IDisposable
 
         var menu = new WinForms.ContextMenuStrip();
         menu.Items.Add("Mostrar atalhos", null, (_, _) => ShowInfoRequested?.Invoke());
+        menu.Items.Add("Verificar atualização", null, (_, _) => CheckUpdateRequested?.Invoke());
         menu.Items.Add(new WinForms.ToolStripSeparator());
         menu.Items.Add("Sair", null, (_, _) => ExitRequested?.Invoke());
 
