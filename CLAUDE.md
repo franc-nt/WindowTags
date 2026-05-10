@@ -114,8 +114,76 @@ Remove-Item -Recurse -Force publish
 
 Durante iteração ativa (testar várias vezes a mesma mudança), pode-se rodar só o `dotnet build` + Debug exe para velocidade — mas a publicação Release na raiz precisa ser feita antes de reportar a tarefa como concluída.
 
+## Auto-update
+
+Mecanismo de "Verificar atualização" acessível pelo menu do tray ("Verificar atualização" entre "Mostrar atalhos" e "Sair") e por botão na `InfoWindow`. Repo público de releases: **`franc-nt/WindowTags`** no GitHub. Endpoint usado: `https://api.github.com/repos/franc-nt/WindowTags/releases/latest`.
+
+Arquivos:
+
+- [`src/WindowCards.App/Updates/UpdateChecker.cs`](src/WindowCards.App/Updates/UpdateChecker.cs) — chama a API `/latest`, compara `<Version>` local vs `tag_name` (strip de `v`, normalização para 4 partes pra evitar pegadinha do `Version.Build = -1`), filtra asset chamado `WindowCards.exe`.
+- [`src/WindowCards.App/Updates/UpdateInstaller.cs`](src/WindowCards.App/Updates/UpdateInstaller.cs) — move-and-replace: renomeia `WindowCards.exe` → `WindowCards.exe.old`, baixa novo no lugar, NTFS aceita rename de exe em uso. Download para arquivo `.update-{guid}.tmp` no **mesmo volume** do destino (cross-volume vira cópia + delete e perde atomicidade). Validação por `Content-Length` vs `asset.size`.
+- [`src/WindowCards.App/UpdateAvailableDialog.xaml`](src/WindowCards.App/UpdateAvailableDialog.xaml) + `.cs` — diálogo com versões + body da release + ProgressBar + Atualizar/Cancelar.
+- [`src/WindowCards.App/App.xaml.cs`](src/WindowCards.App/App.xaml.cs) — orquestra; flag `_updateCheckInProgress` via `Interlocked` evita cliques duplos.
+
+**Coordenação entre processos antigo e novo (importante):** o app antigo libera `_hotkeys` antes de chamar `UpdateInstaller.LaunchUpdatedExe()` — sem isso, o sucessor recebe Win32 1409 (`ERROR_HOTKEY_ALREADY_REGISTERED`) ao tentar registrar `Ctrl+Alt+L`/`Ctrl+Alt+R`. O sucessor, por sua vez, chama `UpdateInstaller.WaitForUpdaterPredecessor(5s)` no `OnStartup` quando detecta `WindowCards.exe.old` ao lado, e aguarda processos `WindowCards` com o mesmo caminho de exe sair antes de prosseguir. Defesa em profundidade: cada lado se protege da falha do outro.
+
+`InstallAsync` **não chama `Process.Start`** — quem coordena dispose-de-recursos + relaunch é o caller (`App.xaml.cs`). Não juntar de novo.
+
+## Releases
+
+A versão é definida em [`src/WindowCards.App/WindowCards.App.csproj`](src/WindowCards.App/WindowCards.App.csproj) via `<Version>X.Y.Z</Version>`. Em runtime: `Assembly.GetExecutingAssembly().GetName().Version`.
+
+**Quando rodar o procedimento:** apenas quando o usuário pedir explicitamente algo como "gere nova versão", "lança release", "publica vX.Y.Z". Push normal **não** dispara release — só commit e push de código. Bump da versão e tag são exclusivos do fluxo de release.
+
+**Decidir o número:** patch (`0.1.X+1`) para fixes/textos/ajustes pequenos; minor (`0.X+1.0`) para features novas; major (`X+1.0.0`) só após 1.0.0. O usuário pode pedir um número específico — se não pedir, escolha o patch e confirme antes de publicar.
+
+**Procedimento completo:**
+
+```powershell
+# 1. Bump <Version> no csproj (ex: 0.1.2 -> 0.1.3). Garanta build verde antes.
+dotnet build WindowCards.sln
+
+# 2. Republicar o exe single-file na raiz
+Get-Process WindowCards -ErrorAction SilentlyContinue | Stop-Process -Force
+dotnet publish src\WindowCards.App\WindowCards.App.csproj -c Release -r win-x64 `
+  --self-contained false -p:PublishSingleFile=true `
+  -p:DebugType=None -p:DebugSymbols=false -o publish
+Move-Item -Force publish\WindowCards.exe WindowCards.exe
+Remove-Item -Recurse -Force publish
+
+# 3. Confirme FileVersion bate com o <Version>:
+(Get-Item C:\Apps\cards\WindowCards.exe).VersionInfo.FileVersion
+
+# 4. Commit, tag, push
+git add WindowCards.exe src\WindowCards.App\WindowCards.App.csproj <demais arquivos alterados>
+git commit -m "<mensagem em PT, imperativo, estilo do repo>"
+git tag vX.Y.Z
+git push origin main
+git push origin vX.Y.Z
+
+# 5. Criar release com o exe anexado (asset cru, sem ZIP — convenção do projeto)
+gh release create vX.Y.Z WindowCards.exe `
+  --title "vX.Y.Z" `
+  --notes "<changelog em PT>"
+
+# 6. VALIDAR que a release ficou consultável pelo updater do app:
+curl -s -H "User-Agent: WindowCards-Updater/1.0" -H "Accept: application/vnd.github+json" `
+  https://api.github.com/repos/franc-nt/WindowTags/releases/latest | `
+  python -c "import sys,json; d=json.load(sys.stdin); print('tag:', d['tag_name']); print('asset:', d['assets'][0]['name'], d['assets'][0]['size'])"
+# Esperado: tag=vX.Y.Z e asset name=WindowCards.exe com size != 0.
+```
+
+**Convenções de release:**
+
+- Asset = `WindowCards.exe` cru (não ZIP). O `UpdateChecker` casa o nome exato (case-insensitive).
+- Tag = `vX.Y.Z` (3 partes). `UpdateChecker.TryParseTag` faz strip do `v`. Sufixos `-rc`/`-beta` não são suportados pelo `System.Version` — não usar.
+- Body da release = changelog que vai aparecer no `UpdateAvailableDialog`. Escrever em PT, conciso, focado em "o que muda pro usuário". Evitar caracteres acentuados em mensagens passadas via `--notes` no PowerShell se o terminal estiver em CP1252; se duvidar, escreve sem acentos ou usa `--notes-file`.
+- O endpoint `/releases/latest` exclui `prerelease=true` automaticamente — não publicar nada com a flag de prerelease se quiser que o updater veja.
+
+**Não fazer push --force a tags publicadas.** Se errou o conteúdo de uma tag já publicada, faça `vX.Y.Z+1` em vez de reescrever.
+
 ## Estado do MVP
 
-Implementado: criar/editar/remover card via hotkey global e menu de contexto sobre **qualquer janela top-level**; drag livre dentro da janela alvo com persistência do offset relativo; owner relationship para minimize/z-order automáticos; DPI Per-Monitor V2; resize com grip e texto que escala via Viewbox; tray icon com `NotifyIcon` (clique → `InfoWindow` com atalhos, menu → Mostrar atalhos / Sair); bloqueio de Win+Setas/maximize via `WM_SYSCOMMAND` + `MA_NOACTIVATE`; exe single-file self-contained na raiz.
+Implementado: criar/editar/remover card via hotkey global e menu de contexto sobre **qualquer janela top-level**; drag livre dentro da janela alvo com persistência do offset relativo; owner relationship para minimize/z-order automáticos; DPI Per-Monitor V2; resize com grip e texto que escala via Viewbox; tray icon com `NotifyIcon` (clique → `InfoWindow` com atalhos, menu → Mostrar atalhos / Verificar atualização / Sair); bloqueio de Win+Setas/maximize via `WM_SYSCOMMAND` + `MA_NOACTIVATE`; exe single-file framework-dependent na raiz; **auto-update via GitHub Releases** com move-and-replace e coordenação entre processo antigo/novo.
 
-Faltando (em ordem): persistência JSON de regras em `%APPDATA%`, picker visual com cursor target, fullscreen detection, virtual desktops, throttle de eventos, instalador (Inno/MSIX).
+Faltando (em ordem): persistência JSON de regras em `%APPDATA%`, picker visual com cursor target, fullscreen detection, virtual desktops, throttle de eventos, instalador (Inno/MSIX), workflow GitHub Actions para automatizar o publish em push de tag.
